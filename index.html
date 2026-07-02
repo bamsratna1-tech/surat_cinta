@@ -335,11 +335,13 @@
                 </div>
                 <p class="reveal text-[11px] opacity-50 italic adaptive-subtext uppercase tracking-widest mt-6">*Klik tombol love untuk mengaminkan</p>
             </div>
-              <!-- FITUR ANIMASI KEPALA PASANGAN -->
+            
+            <!-- FITUR ANIMASI KEPALA PASANGAN -->
             <section class="py-12 px-6 text-center mt-12">
                 <div class="reveal max-w-sm mx-auto glass-card rounded-[2.5rem] p-6 border border-amber-500/30">
                     <h3 class="font-handwriting text-3xl text-amber-500 mb-6">Mendekatlah...</h3>
                     
+                    <!-- PERUBAHAN DI SINI: Tambah onclick dengan pengamanan event -->
                     <div id="coupleContainer" class="relative w-full h-32 rounded-full flex items-center justify-center cursor-pointer select-none bg-white/5 overflow-hidden" onclick="moveCoupleCloser(event)">
                         
                         <div id="centerHeart" class="absolute scale-0 opacity-0 text-red-500 text-5xl z-0">❤️</div>
@@ -360,6 +362,8 @@
                     </div>
                 </div>
             </section>
+        </section>
+
         <!-- 6. WHATSAPP LOVE MESSAGE (Fitur Penerima Membalas) -->
         <section class="py-20 px-6">
             <div class="reveal max-w-md mx-auto glass-card rounded-[2.5rem] p-8 space-y-6 relative overflow-hidden">
@@ -437,6 +441,8 @@
 
         let isPlaying = false;
         let isWarmMode = false;
+        let clickCount = 0; // State untuk menghitung jumlah klik pada foto
+        let isCoupleClose = false; // State untuk mendeteksi apakah foto sudah di tengah
         const bgMusic = document.getElementById('bgMusic');
 
         // Fitur Salju
@@ -460,7 +466,7 @@
             }
         }
 
-        // PERBAIKAN: Logika Countdown Anti-Minus
+        // Logika Countdown
         function updateCountdown() {
             const now = new Date().getTime();
             const diff = TARGET_DATE - now;
@@ -468,7 +474,6 @@
             const daysEl = document.getElementById('days');
             if (!daysEl) return;
 
-            // Jika waktu sudah lewat (Minus)
             if (diff < 0) {
                 daysEl.innerText = "00";
                 document.getElementById('hours').innerText = "00";
@@ -482,7 +487,6 @@
                 return;
             }
 
-            // Jika belum lewat hitung normal
             const d = Math.floor(diff / (1000 * 60 * 60 * 24));
             const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
@@ -494,21 +498,108 @@
             document.getElementById('secs').innerText = s.toString().padStart(2, '0');
         }
         setInterval(updateCountdown, 1000);
-        updateCountdown(); // Call immediately
+        updateCountdown();
 
-        // Efek Klik Love di layar
+        // Efek Klik Bintang di layar
         function createHeart(e) {
-            if(e.target.closest('button') || e.target.closest('label') || e.target.closest('textarea') || e.target.closest('.seller-cta')) return;
+            // PERUBAHAN: Pastikan klik bintang diblokir jika user klik di area foto
+            if(e.target.closest('button') || e.target.closest('label') || e.target.closest('textarea') || e.target.closest('.seller-cta') || e.target.closest('#coupleContainer')) return;
             const heart = document.createElement('div');
             heart.className = 'heart-click';
-            heart.innerHTML = '✨'; // Diganti bintang kecil biar elegan
+            heart.innerHTML = '✨'; 
             heart.style.left = (e.clientX - 10) + 'px';
             heart.style.top = (e.clientY - 10) + 'px';
             document.body.appendChild(heart);
             setTimeout(() => heart.remove(), 1000);
         }
 
-        // GSAP Auto Slider (Diperhalus)
+        // ==========================================
+        // FUNGSI ANIMASI KEPALA MENDEKAT BERTAHAP
+        // ==========================================
+        function moveCoupleCloser(event) {
+            // PERBAIKAN FATAL: Memblokir serbuk bintang langsung di dalam fungsi ini
+            if(event) {
+                event.stopPropagation();
+            }
+
+            if (isCoupleClose) {
+                // RESET: Jika sudah di tengah dan diklik lagi, kembalikan ke awal
+                gsap.to("#personLeft", { left: "10%", duration: 1, ease: "power2.out" });
+                gsap.to("#personRight", { right: "10%", duration: 1, ease: "power2.out" });
+                gsap.to("#centerHeart", { scale: 0, opacity: 0, duration: 0.3, ease: "power2.in" });
+                clickCount = 0;
+                isCoupleClose = false;
+                
+                // Ubah teks kembali
+                const titleText = document.querySelector("#coupleContainer").previousElementSibling;
+                if(titleText) titleText.innerText = "Mendekatlah...";
+                return;
+            }
+
+            clickCount++;
+            
+            // Total klik yang dibutuhkan
+            const maxClicks = 3; 
+            
+            // PERBAIKAN FATAL: Kita murni menggunakan % angka bulat tanpa fungsi calc() di GSAP. 
+            // GSAP terkadang error ketika bertransisi dari nilai % ke calc(%), membuat elemen "diam saja" 
+            const startPos = 10;
+            const endPos = 38; // 38% adalah angka yang aman mendekati tengah
+            const step = (endPos - startPos) / maxClicks;
+            
+            // Posisi yang akan dituju sesuai klik ke-berapa
+            const currentPos = startPos + (step * clickCount);
+
+            if (clickCount < maxClicks) {
+                // TAHAP 1 & 2: Bergerak mendekat perlahan (format string murni '%')
+                gsap.to("#personLeft", { left: currentPos + "%", duration: 0.5, ease: "back.out(1.5)" });
+                gsap.to("#personRight", { right: currentPos + "%", duration: 0.5, ease: "back.out(1.5)" });
+                
+                // Ubah teks untuk memberi semangat
+                const titleText = document.querySelector("#coupleContainer").previousElementSibling;
+                if(clickCount === 1 && titleText) titleText.innerText = "Sedikit lagi...";
+                if(clickCount === 2 && titleText) titleText.innerText = "Hampir sampai...";
+
+                // Efek hati kecil-kecil untuk feedback setiap klik
+                const miniHeart = document.createElement('div');
+                miniHeart.innerHTML = '💖';
+                miniHeart.style.position = 'absolute';
+                // Posisi random di tengah
+                miniHeart.style.left = `calc(50% + ${(Math.random() * 40) - 20}px)`;
+                miniHeart.style.top = `calc(50% + ${(Math.random() * 40) - 20}px)`;
+                miniHeart.style.zIndex = 999;
+                miniHeart.style.pointerEvents = 'none';
+                miniHeart.style.animation = 'heartOut 1s ease-out forwards';
+                document.getElementById('coupleContainer').appendChild(miniHeart);
+                setTimeout(() => miniHeart.remove(), 1000);
+
+            } else {
+                // TAHAP AKHIR (Klik ke-3): Bersatu (format string murni '%')
+                gsap.to("#personLeft", { left: endPos + "%", duration: 0.8, ease: "back.out(1.2)" });
+                gsap.to("#personRight", { right: endPos + "%", duration: 0.8, ease: "back.out(1.2)" });
+                
+                // Munculkan hati besar
+                gsap.to("#centerHeart", { scale: 1.2, opacity: 1, duration: 0.5, delay: 0.4, ease: "back.out(2)" });
+                
+                // Ubah teks klimaks
+                const titleText = document.querySelector("#coupleContainer").previousElementSibling;
+                if(titleText) titleText.innerText = "Kita Bersama! ❤️";
+
+                // Efek kembang api mini
+                setTimeout(() => {
+                    confetti({
+                        particleCount: 40,
+                        spread: 60,
+                        origin: { y: 0.65 },
+                        colors: ['#ef4444', '#f59e0b', '#ec4899']
+                    });
+                }, 500);
+
+                isCoupleClose = true; // Set state bahwa mereka sudah bersatu
+            }
+        }
+
+        // GSAP Auto Slider
         function initAutoSlider() {
             const track = document.getElementById('sliderTrack');
             if (!track) return;
@@ -520,7 +611,7 @@
             
             gsap.to(track, {
                 x: -totalWidth,
-                duration: window.innerWidth < 768 ? 30 : 50, // Lebih cepat di mobile
+                duration: window.innerWidth < 768 ? 30 : 50,
                 ease: "none",
                 repeat: -1,
                 overwrite: "auto"
@@ -579,7 +670,7 @@
             window.open(url, '_blank');
         }
 
-        // WA CTA 2: Pelanggan Pesan Web ke Kamu (Seller)
+        // WA CTA 2: Pelanggan Pesan Web ke Kamu
         function orderWebsite() {
             const text = "Halo kak, saya melihat template Digital Gift *Premium Greeting* dan tertarik untuk membuat website kejutan romantis untuk pasangan saya. Boleh info pricelist dan cara pesannya?";
             const url = `https://wa.me/${SELLER_PHONE}?text=${encodeURIComponent(text)}`;
@@ -603,7 +694,6 @@
                 document.execCommand('copy');
                 document.body.removeChild(dummy);
                 
-                // Kustom Notifikasi Toast
                 const toast = document.createElement('div');
                 toast.className = 'fixed top-10 left-1/2 -translate-x-1/2 bg-white text-stone-900 px-6 py-3 rounded-full z-[100] text-sm font-bold shadow-2xl animate-bounce';
                 toast.innerText = 'Link berhasil disalin! 📋';
@@ -645,7 +735,7 @@
             lucide.createIcons();
         }
 
-        // Membuka Hadiah (Start Experience)
+        // Membuka Hadiah
         function openGift() {
             gsap.to("#openingScreen", {
                 opacity: 0, 
@@ -656,14 +746,12 @@
                     document.getElementById('openingScreen').style.display = 'none';
                     document.getElementById('mainContent').classList.add('visible-content');
                     
-                    // Inisialisasi setelah konten terlihat
                     setTimeout(() => {
                         initAutoSlider(); 
                         initScrollReveal(); 
                         createSnow();
                         toggleMusic(); 
                         
-                        // Kembang api pembuka
                         confetti({ 
                             particleCount: 100, 
                             spread: 100, 
